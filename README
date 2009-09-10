@@ -1,0 +1,26 @@
+AArray
+ Description:
+  A PHP styled associative array for C++.
+ Details:
+  An associative array can behave like a vector, map, hashtable,
+  dictionary, list, set, etc. It is a set of key-value pairs where
+  the key can be either an integer or a std::string. Internally the
+  two types of keys are stored in different structures. In particular,
+  accessing an arbitrary integer key will allocate all uninitialized
+  integer keys below it to nulls.
+    The values can be a variety of types: null (uninitialized), bool,
+  int, real (double), string (std::string), or another AArray. In this
+  way, multidimensional arrays can be created, as well as tree structures,
+  and general hierarchical data structures.
+    One of the most powerful features is the serialization/deserialization
+  via stream operators. The entire AArray structure can be (human-readably)
+  serialized to a stream and then read back in again. This makes the
+  AArray an attractive lightweight structured data parser. Also, the
+  serialization format can be customized to provide a reasonable syntax
+  for hand editting.
+ Example:
+  AArray array;
+  array[3] = AArray::Value("foo"); // elements 0-2 are set to null
+  array["It's just another quote"] = AArray::Value(3.426);
+  array[2][3][4] = AArray::Value(true);
+  AArray array2(array); // deep copy
