@@ -102,9 +102,12 @@ private:
 	static std::string serialized_false;
 	static std::string serialized_Array;
 	static std::string serialized_keyval_sep;
+	static std::string include_string;
 	static char serialized_quote;
 	static char serialized_pair_sep;
 	static char serialized_array_begin, serialized_array_end;
+	static char serialized_continuation;
+	static char inline_comment_begin;
 public:
 	AArray();
 	AArray(const AArray &a);
@@ -127,30 +130,46 @@ public:
 	size_t count_int() const; // number of elements in the int part
 	void get_str_keys(std::vector<std::string> &keys) const;
 	
-	bool parse(std::istream& is, size_t *error_line_number);
+	bool parse(std::istream& is, std::ostream *serr, size_t starting_line_number = 1);
+protected:
+	bool parse_value(std::istream& is, AArray::Value &val, std::ostream *serr, size_t &line);
+public:
 	
 	// Non-thread-safe members
 	static void set_serialization_string_null(const char *str);        // [1]
 	static void set_serialization_string_bools(const char *str_true,
 	                                           const char *str_false); // [1]
 	static void set_serialization_string_Array(const char *str);     // [1,2]
+	static void set_include_string(const char *str);                   // [1]
 	static void set_serialization_string_keyval_sep(const char *str);
 	static void set_serialization_char_quote(char c);
 	static void set_serialization_char_pair_sep(char c);               // [3]
 	static void set_serialization_char_array_delimiters(char begin, char end);
+	static char set_serialization_char_continuation(char c);           // [4]
+	static void set_inline_comment_char(char c);                       // [5]
 	// Footnotes to the above:
 	// [1] The strings used in these functions must all start with
 	//     different characters.
 	// [2] Set to an empty string to disable outputting/inputting it.
 	// [3] Set to \0 to disable outputting/inputting it.
+	// [4] Set to \0 to disable list continuation during parsing. Cannot
+	//     be the same as the quote character.
+	// [5] Set to \0 to disable single character begun inline comments.
+	//     Must be different from quote character.
 
+protected:
+	static void AArray::skip_whitespace(std::istream &is, size_t &line);
+	static bool read_quoted_string(std::istream &is, std::string &str, size_t &line);
 protected:
 	friend std::ostream& operator<<(std::ostream &os, const AArray &a);
 	friend std::ostream& operator<<(std::ostream &os, 
 	                                const AArray::value_type &a);
+	friend bool operator==(const AArray &a, const AArray &b);
 	std::ostream& print_r_helper(std::ostream &os, int level) const;
 };
 
+bool operator==(const AArray &a, const AArray &b);
+bool operator==(const AArray::Value &a, const AArray::Value &b);
 std::ostream& operator<<(std::ostream &os, const AArray::value_type &a);
 std::ostream& operator<<(std::ostream &os, const AArray &a);
 std::istream& operator>>(std::istream& is, AArray& arr);

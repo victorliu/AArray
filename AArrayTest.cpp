@@ -5,7 +5,7 @@ typedef AArray::value_type o;
 
 int main(){
 	AArray::set_serialization_string_keyval_sep("=");
-	AArray::set_serialization_char_array_delimiters('(', ')');
+	AArray::set_serialization_char_array_delimiters('{', '}');
 	AArray::set_serialization_string_Array("");
 	AArray::set_serialization_char_pair_sep('\0');
 
@@ -27,8 +27,6 @@ int main(){
 	// modify it randomly
 	srand(time(0));
 	std::string modified_output(ss.str());
-	//modified_output[rand()%modified_output.size()] = ' ';
-//	modified_output[62] = ' ';
 	
 	// remove all commas (should be ok)
 	{
@@ -37,14 +35,14 @@ int main(){
 			modified_output.replace(pos, 1, " ");
 		}
 	}
+	//modified_output[rand()%modified_output.size()] = ' ';
+	//modified_output[31] = ' ';
 
 	// Read it back in
 	std::istringstream iss(modified_output);
 	AArray arr;
-	size_t line = 1;
-	if(!arr.parse(iss, &line)){
-		std::cout << "Error on line " << line << std::endl;
-		std::cout << modified_output << std::endl;
+	if(!arr.parse(iss, &std::cerr)){
+		std::cout << "___" << std::endl << modified_output << "~~~" << std::endl;
 	}else{
 		std::cout << std::endl << arr << std::endl;
 	}
@@ -52,6 +50,8 @@ int main(){
 	// (deep) copy constructor
 	AArray bar(arr);
 	std::cout << std::endl << bar << std::endl;
+	
+	std::cout << (bar == arr) << (a == arr) << std::endl;
 	
 	return 0;
 	/*
