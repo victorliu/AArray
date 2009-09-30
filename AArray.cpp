@@ -173,6 +173,13 @@ AArray::Value& AArray::Value::operator[](const char *key){
 	}
 }
 
+size_t AArray::Value::count() const{
+	if(AArray::TYPE_ARRAY == type){
+		return value.val_array->count();
+	}else{
+		return 0;
+	}
+}
 double AArray::Value::numeric_value() const{
 	switch(type){
 	case AArray::TYPE_REAL:
@@ -569,6 +576,14 @@ static bool match_string(std::istream &is, const std::string &str){
 	}
 	return true;
 }
+static bool read_unquoted_string(std::istream &is, std::string &str){
+	str.clear();
+	char c;
+	while(!isspace((c = is.peek()))){
+		str += c;
+	}
+	return (str.size() > 0);
+}
 // expected to have the quote delimiters still sitting in the input stream
 bool AArray::read_quoted_string(std::istream &is, std::string &str, size_t &line){
 	str.clear();
@@ -687,22 +702,27 @@ bool AArray::parse(std::istream& is, std::ostream *serr, size_t line){
 		bool key_is_string = true;
 		std::string key_str;
 		size_t key_int;
-		if(is.peek() == serialized_quote){ // string key
-			if(!read_quoted_string(is, key_str, line)){
-				if(NULL != serr){ (*serr) << "Invalid string key on line " << line << std::endl; }
-				return false;
-			}
-		}else if(is.peek() == serialized_continuation){
-			key_is_string = false;
-			is.ignore(1);
-			key_int = count_int();
-		}else{ // numeric key
+		if(isdigit(is.peek())){ // numeric key
 			is >> key_int;
 			if(is.fail()){
 				if(NULL != serr){ (*serr) << "Invalid key on line " << line << std::endl; }
 				return false;
 			}
 			key_is_string = false;
+		}else if(is.peek() == serialized_continuation){
+			key_is_string = false;
+			is.ignore(1);
+			key_int = count_int();
+		}else if(is.peek() == serialized_quote){ // string key in quotes
+			if(!read_quoted_string(is, key_str, line)){
+				if(NULL != serr){ (*serr) << "Invalid string key on line " << line << std::endl; }
+				return false;
+			}
+		}else{ // string key not in quotes
+			if(!read_unquoted_string(is, key_str)){
+				if(NULL != serr){ (*serr) << "Invalid string key on line " << line << std::endl; }
+				return false;
+			}
 		}
 		
 		// read in the => arrow
@@ -778,3 +798,46 @@ void AArray::set_serialization_char_quote(char c){ serialized_quote = c; }
 void AArray::set_serialization_char_pair_sep(char c){ serialized_pair_sep = c; }
 void AArray::set_serialization_char_array_delimiters(char begin, char end){ serialized_array_begin = begin; serialized_array_end = end; }
 void AArray::set_inline_comment_char(char c){ inline_comment_begin = c; }
+
+bool AArray::for_each_helper(AArray &A, AArray::KeyValueFunction func, void *data){
+	int index = 0;
+	for(int_part_t::iterator i = A.map_int.begin(); i != A.map_int.end(); ++i, ++index){
+		if(false == func(Key(index), *i, data)){ return false; }
+		if(TYPE_ARRAY == i->type){
+			for_each_helper(*(i->value.val_array), func, data);
+		}
+	}
+	for(str_part_t::iterator i = A.map_str.begin(); i != A.map_str.end(); ++i){
+		if(false == func(Key(i->first), i->second, data)){ return false; }
+		if(TYPE_ARRAY == i->second.type){
+			for_each_helper(*(i->second.value.val_array), func, data);
+		}
+	}
+}
+void AArray::for_each(KeyValueFunction func, void *data){
+	for_each_helper(*this, func, data);
+}
+bool AArray::for_each_path_helper(AArray &A, AArray::Path &path, AArray::PathValueFunction func, void *data){
+	int index = 0;
+	for(int_part_t::iterator i = A.map_int.begin(); i != A.map_int.end(); ++i, ++index){
+		std::list<Key>::iterator tail = path.insert(path.end(), Key(index));
+		if(false == func(path, *i, data)){ return false; }
+		if(TYPE_ARRAY == i->type){
+			for_each_path_helper(*(i->value.val_array), path, func, data);
+		}
+		path.erase(tail);
+	}
+	for(str_part_t::iterator i = A.map_str.begin(); i != A.map_str.end(); ++i){
+		std::list<Key>::iterator tail = path.insert(path.end(), Key(i->first));
+		if(false == func(path, i->second, data)){ return false; }
+		if(TYPE_ARRAY == i->second.type){
+			for_each_path_helper(*(i->second.value.val_array), path, func, data);
+		}
+		path.erase(tail);
+	}
+}
+void AArray::for_each_path(PathValueFunction func, void *data){
+	Path path;
+	for_each_path_helper(*this, path, func, data);
+}
+

@@ -18,6 +18,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <list>
 
 // AArray
 //  Description:
@@ -57,6 +58,21 @@ public:
 		TYPE_STRING,  // string
 		TYPE_BOOL     // boolean value
 	};
+	enum KeyType{
+		KEY_INT,
+		KEY_STRING
+	};
+	class Key{
+		KeyType t;
+	public:
+		int val_int;
+		std::string val_str;
+		explicit Key(int i):t(KEY_INT),val_int(i){}
+		explicit Key(const std::string &s):t(KEY_STRING),val_str(s){}
+		explicit Key(const char *s):t(KEY_STRING),val_str(s){}
+		KeyType type() const{ return t; }
+	};
+	typedef std::list<Key> Path;
 	struct Value{
 		Type type;
 		union{
@@ -87,6 +103,7 @@ public:
 		Value& operator[](const std::string &key);
 		Value& operator[](const char *key);
 
+		size_t count() const; // returns 0 if this is not an array, otherwise array's count
 		double numeric_value() const;
 	};
 	typedef Value value_type;
@@ -156,6 +173,28 @@ public:
 	//     be the same as the quote character.
 	// [5] Set to \0 to disable single character begun inline comments.
 	//     Must be different from quote character.
+
+	// Algorithms
+	
+	// Deeply iterates over all key-value pairs.
+	// The pointer data is passed on to the function
+	// If the function returns false, the iteration ends.
+	typedef bool (*KeyValueFunction)(const Key &key,
+	                                 Value &value, void *data);
+	void for_each(KeyValueFunction func, void *data);
+	// Deeply iterates over all key-value pairs while providing the absolute
+	// key path for each value. data is passed on to the function
+	// If the function returns false, the iteration ends.
+	typedef bool (*PathValueFunction)(const Path &path,
+	                                  Value &value, void *data);
+	void for_each_path(PathValueFunction func, void *data);
+private:
+	static bool for_each_helper(AArray &A, AArray::KeyValueFunction func,
+	                            void *data);
+	static bool for_each_path_helper(AArray &A, AArray::Path &path,
+	                                AArray::PathValueFunction func,
+	                                void *data);
+
 
 protected:
 	static void AArray::skip_whitespace(std::istream &is, size_t &line);

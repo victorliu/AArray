@@ -3,6 +3,28 @@
 
 typedef AArray::value_type o;
 
+bool key_val_printer(const AArray::Key &key,  AArray::Value &value, void *data){
+	std::ostream &os = *(static_cast<std::ostream*>(data));
+	if(key.type() == AArray::KEY_INT){
+		os << key.val_int;
+	}else{
+		os << key.val_str;
+	}
+	os << " : " << value << std::endl;
+}
+bool path_val_printer(const AArray::Path &path,  AArray::Value &value, void *data){
+	std::ostream &os = *(static_cast<std::ostream*>(data));
+	for(AArray::Path::const_iterator key = path.begin(); key != path.end(); ++key){
+		if(key->type() == AArray::KEY_INT){
+			os << key->val_int;
+		}else{
+			os << key->val_str;
+		}
+		os << '/';
+	}
+	os << value << std::endl;
+}
+
 int main(){
 	AArray::set_serialization_string_keyval_sep("=");
 	AArray::set_serialization_char_array_delimiters('{', '}');
@@ -52,6 +74,9 @@ int main(){
 	std::cout << std::endl << bar << std::endl;
 	
 	std::cout << (bar == arr) << (a == arr) << std::endl;
+	
+	bar.for_each(&key_val_printer, static_cast<void*>(&std::cout));
+	bar.for_each_path(&path_val_printer, static_cast<void*>(&std::cout));
 	
 	return 0;
 	/*
